@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>G1T3 The Brainiacs | Ward Shift-Handoff Console</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js for the Data Science Analytical Element -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Ward Shift-Handoff Console</h1>
+        <p class="subtitle">Theme: CIT-03 Air Quality Monitoring & Health Alert System</p>
+      </div>
+      <div class="team-badge">Team: The Brainiacs (G1T3)</div>
+    </header>
+
+    <!-- Operating Mode Selector -->
+    <div class="mode-tabs">
+      <button id="btnTabLive" class="tab-btn active" onclick="switchMode('live')"> -- Mode 1: Live Open-Meteo API Feed</button>
+      <button id="btnTabManual" class="tab-btn" onclick="switchMode('manual')"> -- Mode 2: Manual Evaluator Override</button>
+    </div>
+
+    <!-- SECTION 1: LIVE API STREAM -->
+    <section id="sectionLive" class="panel mode-section active">
+      <h3 class="panel-heading primary-text">Live Real-Time Hospital Feed (Open-Meteo API)</h3>
+      <div class="control-grid">
+        <div>
+          <label for="liveCitySelect">Target City Hub</label>
+          <select id="liveCitySelect">
+            <option value="kolkata">Kolkata / Howrah (22.57° N, 88.36° E)</option>
+            <option value="delhi">Delhi Central (28.61° N, 77.20° E)</option>
+            <option value="mumbai">Mumbai Coastal (19.07° N, 72.87° E)</option>
+          </select>
+        </div>
+        <div>
+          <label for="liveFiltration">Ward HVAC Status</label>
+          <select id="liveFiltration">
+            <option value="true">Operational (Filters Active)</option>
+            <option value="false">System Offline / Clogged</option>
+          </select>
+        </div>
+        <div>
+          <button class="action-btn" id="btnRefreshLive">Query Live Air Quality API</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: MANUAL OVERRIDE (FOR HOD/INSTRUCTOR TESTING) -->
+    <section id="sectionManual" class="panel mode-section">
+      <h3 class="panel-heading caution-text">Manual Evaluator Override Mode</h3>
+      <div class="control-grid">
+        <div>
+          <label for="manualAqi">Test Outdoor AQI Value [0–500]</label>
+          <input type="number" id="manualAqi" value="125" placeholder="Enter custom AQI..." />
+        </div>
+        <div>
+          <label for="manualFiltration">Test Ward HVAC Filtration</label>
+          <select id="manualFiltration">
+            <option value="true">Operational (Filters Normal)</option>
+            <option value="false">Fault / Offline</option>
+          </select>
+        </div>
+        <div>
+          <label>Quick Presets</label>
+          <div class="preset-group">
+            <button class="action-btn btn-safe" onclick="setPreset(35, true)">Safe (35)</button>
+            <button class="action-btn btn-caution" onclick="setPreset(115, true)">Caution (115)</button>
+            <button class="action-btn btn-high" onclick="setPreset(190, true)">High (190)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTEXTUAL SHIFT ALERT BANNER -->
+    <section id="statusBanner" class="banner Caution">
+      <div class="banner-left">
+        <span id="badgeText" class="banner-badge">Caution</span>
+        <div>
+          <strong id="bannerTitle">Air Quality: Caution — check mask supply</strong>
+          <p id="bannerSub">Elevated particulate matter. Mask precaution active.</p>
+        </div>
+      </div>
+      <div class="banner-meta">
+        Active Feed: <span id="feedModeTag" class="primary-text">Live Stream</span><br />
+        Stub: <code>get_aq_status()</code>
+      </div>
+    </section>
+
+    <button id="formulaToggleBtn" class="formula-toggle-btn" aria-label="Show formula">FORMULA</button>
+
+    <div id="formulaPopup" class="formula-popup hidden">
+      <div class="formula-popup-content">
+        <div class="formula-popup-header">
+          <h3>FORMULA</h3>
+          <button id="formulaCloseBtn" class="formula-close-btn" aria-label="Close formula">×</button>
+        </div>
+        <div class="formula-box">
+          <p><strong>Formula 1:</strong> Safe = AQI &lt; 50 and filtration = ON</p>
+          <p><strong>Formula 2:</strong> Caution = AQI ≤ 150 or filtration = OFF</p>
+          <p><strong>Formula 3:</strong> High = AQI &gt; 150</p>
+        </div>
+        <pre>// Main status rule
+if (AQI &lt; 50 && filtrationOK) {
+  status = "Safe";
+} else if (AQI &lt;= 150 || !filtrationOK) {
+  status = "Caution";
+} else {
+  status = "High";
+}
+
+// Chart grouping rule
+if (AQI &lt; 50) safe++;
+else if (AQI &lt;= 150) caution++;
+else high++;</pre>
+      </div>
+    </div>
+
+    <!-- CORE WORKSPACE -->
+    <div class="grid-layout">
+      <!-- Bed-Board Table -->
+      <section class="panel">
+        <h2 class="section-title">Active Ward Shift Bed-Board</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Bed</th>
+              <th>Patient</th>
+              <th>Acuity</th>
+              <th>Condition</th>
+              <th>Handoff AQI Tag</th>
+            </tr>
+          </thead>
+          <tbody id="patientTable"></tbody>
+        </table>
+      </section>
+
+      <!-- Data Science Analytics -->
+      <section class="panel">
+        <h2 class="section-title">24-Hour Historical Distribution</h2>
+        <p class="section-subtitle">Aggregated from hourly sensor observations</p>
+        <div class="chart-box">
+          <canvas id="distributionChart"></canvas>
+        </div>
+        <div class="stat-row">
+          <div><div id="safePercent" class="stat-val safe-color">0%</div><div class="stat-lbl">Safe Hours</div></div>
+          <div><div id="cautionPercent" class="stat-val caution-color">0%</div><div class="stat-lbl">Caution Hours</div></div>
+          <div><div id="highPercent" class="stat-val high-color">0%</div><div class="stat-lbl">High Risk Hours</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
